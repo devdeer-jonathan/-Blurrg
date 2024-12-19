@@ -168,6 +168,7 @@
                 systemDrives = specificDrives?.ToList();
             }
             var userFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            // TODO: Get this from config
             string[] commonDirectories =
             {
                 "Python", @$"{userFolderPath}\AppData\Local\Programs\Python", @"Program Files\Python",

@@ -4,6 +4,8 @@
 
     using Microsoft.Extensions.Logging;
 
+    using Spectre.Console;
+
     using Console = System.Console;
 
     /// <summary>
@@ -41,10 +43,39 @@
         /// <returns>0 if the app ran succesfully otherwise 1.</returns>
         public Task<int> StartAsync(string[] args)
         {
+            // Get Python detection result
             var pythonDetectionResult = PythonDetectionLogic.IsPythonInstalled();
-            Console.WriteLine($"Detected Python on system: {pythonDetectionResult.DetectedPython}");
-            Console.WriteLine($"Path to Python: {pythonDetectionResult.PathToPython}");
-            Console.WriteLine($"Python test process result: {PythonDetectionLogic.RunTestProcess(pythonDetectionResult.PythonExecutable ?? "python").RawOutput}");
+
+            // Clear the console and start with a cool title
+            AnsiConsole.Clear();
+            AnsiConsole.MarkupLine("[bold green]Python Installation Detection[/]");
+
+            // Output the result with nice formatting
+            AnsiConsole.WriteLine(); // Add some space between sections
+            AnsiConsole.MarkupLine(
+                "[bold]Detected Python on system:[/] "
+                + (pythonDetectionResult.DetectedPython ? "[green]Yes[/]" : "[red]No[/]"));
+            if (pythonDetectionResult.DetectedPython)
+            {
+                AnsiConsole.MarkupLine(
+                    "[bold]Path to Python:[/] [underline]{0}[/]",
+                    pythonDetectionResult.PathToPython ?? "N/A");
+                var testProcessResult =
+                    PythonDetectionLogic.RunTestProcess(pythonDetectionResult.PythonExecutable ?? "python");
+                AnsiConsole.MarkupLine(
+                    "[bold]Python test process result:[/] {0}",
+                    testProcessResult.RawOutput ?? "N/A");
+                if (!string.IsNullOrEmpty(testProcessResult.ErrorMessage))
+                {
+                    AnsiConsole.MarkupLine("[bold red]Error:[/] {0}", testProcessResult.ErrorMessage);
+                }
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[bold red]Python is not installed on this system.[/]");
+            }
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[bold]Press any key to exit...[/]");
             Console.ReadKey();
             return Task.FromResult(0);
         }
