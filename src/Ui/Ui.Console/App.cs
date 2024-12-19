@@ -1,5 +1,7 @@
 ﻿namespace Ui.Console
 {
+    using Logic.Interfaces.Logic;
+
     using Microsoft.Extensions.Logging;
 
     using Console = System.Console;
@@ -21,9 +23,11 @@
         /// Default constructor.
         /// </summary>
         /// <param name="logger">The logger to use.</param>
-        public App(ILogger<App> logger)
+        /// <param name="pythonDetectionLogic">Logic related to detecting Python installations on the runtime system.</param>
+        public App(ILogger<App> logger, IPythonDetectionLogic pythonDetectionLogic)
         {
             _logger = logger;
+            PythonDetectionLogic = pythonDetectionLogic;
         }
 
         #endregion
@@ -37,12 +41,22 @@
         /// <returns>0 if the app ran succesfully otherwise 1.</returns>
         public Task<int> StartAsync(string[] args)
         {
-            _logger.LogInformation("Hello from the logger.");
-            Console.WriteLine("Hello World!");
-            Console.WriteLine("Hit any key to exit.");
+            var pythonDetectionResult = PythonDetectionLogic.IsPythonInstalled();
+            Console.WriteLine($"Detected Python on system: {pythonDetectionResult.DetectedPython}");
+            Console.WriteLine($"Path to Python: {pythonDetectionResult.PathToPython}");
+            Console.WriteLine($"Python test process result: {PythonDetectionLogic.RunTestProcess().RawOutput}");
             Console.ReadKey();
             return Task.FromResult(0);
         }
+
+        #endregion
+
+        #region properties
+
+        /// <summary>
+        /// Logic related to detecting Python installations on the runtime system.
+        /// </summary>
+        private IPythonDetectionLogic PythonDetectionLogic { get; }
 
         #endregion
     }

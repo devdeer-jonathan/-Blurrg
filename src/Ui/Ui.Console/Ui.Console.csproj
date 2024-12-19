@@ -8,4 +8,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Logic\Logic.Core\Logic.Core.csproj" />
+    <ProjectReference Include="..\..\Logic\Logic.Interfaces\Logic.Interfaces.csproj" />
+  </ItemGroup>
 </Project>

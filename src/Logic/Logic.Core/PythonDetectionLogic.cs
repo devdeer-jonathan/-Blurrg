@@ -5,6 +5,7 @@
 
     using Interfaces.Logic;
 
+    using Microsoft.Extensions.Logging;
     using Microsoft.Win32;
 
     using Models;
@@ -20,9 +21,11 @@
         /// Default ctor.
         /// </summary>
         /// <param name="operatingSystemLogic">Logic to interact with the operating system.</param>
-        public PythonDetectionLogic(OperatingSystemLogic operatingSystemLogic)
+        /// <param name="logger">The logger to use.</param>
+        public PythonDetectionLogic(IOperatingSystemLogic operatingSystemLogic, ILogger<PythonDetectionLogic> logger)
         {
             OperatingSystemLogic = operatingSystemLogic;
+            Logger = logger;
         }
 
         #endregion
@@ -30,30 +33,77 @@
         #region explicit interfaces
 
         /// <inheritdoc />
-        public bool IsPythonInstalled()
+        public PythonDetectionResultModel IsPythonInstalled()
         {
-            var path = Environment.GetEnvironmentVariable("PATH");
-            if (path != null && path.Split(Path.PathSeparator)
-                    .Any(p => File.Exists(Path.Combine(p, "python")) || File.Exists(Path.Combine(p, "python3"))))
+            var result = new PythonDetectionResultModel
             {
-                return true;
+                DetectedPython = false,
+                PathToPython = null
+            };
+            var path = Environment.GetEnvironmentVariable("PATH");
+            if (path != null)
+            {
+                // Check each directory in the PATH for python or python3 executable
+                foreach (var directory in path.Split(Path.PathSeparator))
+                {
+                    var pythonPath = Path.Combine(directory, "python");
+                    var python3Path = Path.Combine(directory, "python3");
+                    if (File.Exists(pythonPath))
+                    {
+                        result.DetectedPython = true;
+                        result.PathToPython = pythonPath;
+                        return result;
+                    }
+                    if (File.Exists(python3Path))
+                    {
+                        result.DetectedPython = true;
+                        result.PathToPython = python3Path;
+                        return result;
+                    }
+                }
             }
             var operatingSystem = OperatingSystemLogic.GetRuntimeOperatingSystem();
             if (operatingSystem == OSPlatform.Windows)
             {
+                // Check common directories for all drives
+                var detectionResult = CheckCommonDirectories();
+                if (detectionResult.DetectedPython)
+                {
+                    return detectionResult;
+                }
                 using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Python\PythonCore");
                 if (key != null)
                 {
-                    return true;
+                    return new PythonDetectionResultModel
+                    {
+                        DetectedPython = true,
+                        PathToPython = @"SOFTWARE\Python\PythonCore"
+                    };
                 }
             }
             else if (operatingSystem == OSPlatform.Linux || operatingSystem == OSPlatform.OSX)
             {
                 var commonPaths = new[] { "/usr/bin", "/usr/local/bin", "/opt" };
-                return commonPaths.Any(
-                    dir => File.Exists(Path.Combine(dir, "python")) || File.Exists(Path.Combine(dir, "python3")));
+                foreach (var dir in commonPaths)
+                {
+                    var pythonPath = Path.Combine(dir, "python");
+                    var python3Path = Path.Combine(dir, "python3");
+                    if (File.Exists(pythonPath))
+                    {
+                        result.DetectedPython = true;
+                        result.PathToPython = pythonPath;
+                        return result;
+                    }
+                    if (File.Exists(python3Path))
+                    {
+                        result.DetectedPython = true;
+                        result.PathToPython = python3Path;
+                        return result;
+                    }
+                }
+                return result;
             }
-            return false;
+            return result;
         }
 
         /// <inheritdoc />
@@ -91,12 +141,73 @@
 
         #endregion
 
+        #region methods
+
+        /// <summary>
+        /// Checks common directories for Python. By default, all drives available will be searched. Optionally, a specific drive
+        /// identifier can be passed in.
+        /// </summary>
+        /// <returns>A <see cref="PythonDetectionResultModel" /> indicating if Python was found and its path.</returns>
+        private PythonDetectionResultModel CheckCommonDirectories(IEnumerable<string>? specificDrives = null)
+        {
+            var result = new PythonDetectionResultModel
+            {
+                DetectedPython = false,
+                PathToPython = null
+            };
+            var systemDrives = new List<string>();
+            if (!systemDrives.Any())
+            {
+                systemDrives = DriveInfo.GetDrives()
+                    .Where(d => d.IsReady && d.DriveType == DriveType.Fixed)
+                    .Select(d => d.RootDirectory.FullName)
+                    .ToList();
+            }
+            else
+            {
+                systemDrives = specificDrives?.ToList();
+            }
+
+            // Define common Python installation directories
+            var userFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string[] commonDirectories =
+            {
+                "Python", @$"{userFolderPath}\AppData\Local\Programs\Python", @"Program Files\Python",
+                @"Program Files (x86)\Python", @$"{userFolderPath}\AppData\Local\Microsoft\WindowsApps"
+            };
+            if (systemDrives == null || !systemDrives.Any())
+            {
+                Logger.LogWarning("Could not receive any drives to check for common python installation directories.");
+                return result;
+            }
+
+            // Check each common directory on the system drives for Python executables
+            foreach (var fullPath in systemDrives.SelectMany(_ => commonDirectories, Path.Combine)
+                         .Where(
+                             fullPath => Directory.Exists(fullPath)
+                                         && (File.Exists(Path.Combine(fullPath, "python.exe"))
+                                             || File.Exists(Path.Combine(fullPath, "python3.exe")))))
+            {
+                result.DetectedPython = true;
+                result.PathToPython = Path.Combine(fullPath, "python.exe");
+                return result;
+            }
+            return result;
+        }
+
+        #endregion
+
         #region properties
 
         /// <summary>
         /// Logic to interact with the operating system.
         /// </summary>
-        private OperatingSystemLogic OperatingSystemLogic { get; }
+        private IOperatingSystemLogic OperatingSystemLogic { get; }
+
+        /// <summary>
+        /// The logger to use.
+        /// </summary>
+        private ILogger<PythonDetectionLogic> Logger { get; }
 
         #endregion
     }

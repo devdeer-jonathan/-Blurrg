@@ -2,10 +2,12 @@
 {
     using System.Runtime.InteropServices;
 
+    using Interfaces.Logic;
+
     /// <summary>
     /// Contains logic related to operating systems.
     /// </summary>
-    public class OperatingSystemLogic
+    public class OperatingSystemLogic : IOperatingSystemLogic
     {
         #region methods
 

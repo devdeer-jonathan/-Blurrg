@@ -15,7 +15,7 @@
         /// <returns>
         /// Returns <c>true</c> if Python is installed otherwise returns <c>false</c>.
         /// </returns>
-        bool IsPythonInstalled();
+        PythonDetectionResultModel IsPythonInstalled();
 
         /// <summary>
         /// Runs a test python process.
