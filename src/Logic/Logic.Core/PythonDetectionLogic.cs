@@ -3,6 +3,8 @@
     using System.Diagnostics;
     using System.Runtime.InteropServices;
 
+    using Interfaces.Logic;
+
     using Microsoft.Win32;
 
     using Models;
@@ -10,10 +12,14 @@
     /// <summary>
     /// Logic specific to detecting Python installations on the current system.
     /// </summary>
-    public class PythonDetectionLogic
+    public class PythonDetectionLogic : IPythonDetectionLogic
     {
         #region constructors and destructors
 
+        /// <summary>
+        /// Default ctor.
+        /// </summary>
+        /// <param name="operatingSystemLogic">Logic to interact with the operating system.</param>
         public PythonDetectionLogic(OperatingSystemLogic operatingSystemLogic)
         {
             OperatingSystemLogic = operatingSystemLogic;
@@ -21,9 +27,10 @@
 
         #endregion
 
-        #region methods
+        #region explicit interfaces
 
-        public bool DetectPythonInstallation()
+        /// <inheritdoc />
+        public bool IsPythonInstalled()
         {
             var path = Environment.GetEnvironmentVariable("PATH");
             if (path != null && path.Split(Path.PathSeparator)
@@ -49,6 +56,7 @@
             return false;
         }
 
+        /// <inheritdoc />
         public PythonTestProcessResultModel RunTestProcess()
         {
             var result = new PythonTestProcessResultModel();
@@ -61,14 +69,10 @@
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
-            // Start the process
             using var process = Process.Start(startInfo);
             var output = process?.StandardOutput.ReadToEnd();
             var error = process?.StandardError.ReadToEnd();
             process?.WaitForExit();
-
-            // Populate the result
             result.RawOutput = !string.IsNullOrWhiteSpace(output) ? output : error;
             if (result.RawOutput == null)
             {

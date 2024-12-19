@@ -10,6 +10,14 @@
         #region methods
 
         /// <summary>
+        /// Checks whether Python is installed.
+        /// </summary>
+        /// <returns>
+        /// Returns <c>true</c> if Python is installed otherwise returns <c>false</c>.
+        /// </returns>
+        bool IsPythonInstalled();
+
+        /// <summary>
         /// Runs a test python process.
         /// </summary>
         /// <returns>
