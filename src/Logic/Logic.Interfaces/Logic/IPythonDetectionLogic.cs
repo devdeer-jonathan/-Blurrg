@@ -20,10 +20,11 @@
         /// <summary>
         /// Runs a test python process.
         /// </summary>
+        /// <param name="pythonCommand">The command to exectue python which is differs based on version and OS.</param>
         /// <returns>
         /// A <see cref="PythonTestProcessResultModel" /> containing information about whether Python the test process.
         /// </returns>
-        PythonTestProcessResultModel RunTestProcess();
+        PythonTestProcessResultModel RunTestProcess(string pythonCommand);
 
         #endregion
     }

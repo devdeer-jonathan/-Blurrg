@@ -107,12 +107,12 @@
         }
 
         /// <inheritdoc />
-        public PythonTestProcessResultModel RunTestProcess()
+        public PythonTestProcessResultModel RunTestProcess(string pythonExecutable)
         {
             var result = new PythonTestProcessResultModel();
             var startInfo = new ProcessStartInfo
             {
-                FileName = "python",
+                FileName = pythonExecutable,
                 Arguments = "--version",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -167,8 +167,6 @@
             {
                 systemDrives = specificDrives?.ToList();
             }
-
-            // Define common Python installation directories
             var userFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             string[] commonDirectories =
             {
@@ -180,17 +178,18 @@
                 Logger.LogWarning("Could not receive any drives to check for common python installation directories.");
                 return result;
             }
-
             // Check each common directory on the system drives for Python executables
-            foreach (var fullPath in systemDrives.SelectMany(_ => commonDirectories, Path.Combine)
-                         .Where(
-                             fullPath => Directory.Exists(fullPath)
-                                         && (File.Exists(Path.Combine(fullPath, "python.exe"))
-                                             || File.Exists(Path.Combine(fullPath, "python3.exe")))))
+            foreach (var fullPath in systemDrives.SelectMany(_ => commonDirectories, Path.Combine))
             {
-                result.DetectedPython = true;
-                result.PathToPython = Path.Combine(fullPath, "python.exe");
-                return result;
+                var pythonExePath = new[] { "python.exe", "python3.exe" }
+                    .Select(exe => Path.Combine(fullPath, exe))
+                    .FirstOrDefault(File.Exists);
+                if (pythonExePath != null)
+                {
+                    result.DetectedPython = true;
+                    result.PathToPython = pythonExePath;
+                    return result;
+                }
             }
             return result;
         }

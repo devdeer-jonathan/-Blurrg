@@ -44,7 +44,7 @@
             var pythonDetectionResult = PythonDetectionLogic.IsPythonInstalled();
             Console.WriteLine($"Detected Python on system: {pythonDetectionResult.DetectedPython}");
             Console.WriteLine($"Path to Python: {pythonDetectionResult.PathToPython}");
-            Console.WriteLine($"Python test process result: {PythonDetectionLogic.RunTestProcess().RawOutput}");
+            Console.WriteLine($"Python test process result: {PythonDetectionLogic.RunTestProcess(pythonDetectionResult.PythonExecutable ?? "python").RawOutput}");
             Console.ReadKey();
             return Task.FromResult(0);
         }
