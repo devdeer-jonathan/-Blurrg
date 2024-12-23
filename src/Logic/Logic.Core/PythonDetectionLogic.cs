@@ -44,23 +44,8 @@
             if (path != null)
             {
                 // Check each directory in the PATH for python or python3 executable
-                foreach (var directory in path.Split(Path.PathSeparator))
-                {
-                    var pythonPath = Path.Combine(directory, "python");
-                    var python3Path = Path.Combine(directory, "python3");
-                    if (File.Exists(pythonPath))
-                    {
-                        result.DetectedPython = true;
-                        result.PathToPython = pythonPath;
-                        return result;
-                    }
-                    if (File.Exists(python3Path))
-                    {
-                        result.DetectedPython = true;
-                        result.PathToPython = python3Path;
-                        return result;
-                    }
-                }
+                result = path.Split(Path.PathSeparator)
+                    .Aggregate(result, (current, dir) => CheckDirectory(dir, current));
             }
             var operatingSystem = OperatingSystemLogic.GetRuntimeOperatingSystem();
             if (operatingSystem == OSPlatform.Windows)
@@ -83,25 +68,9 @@
             }
             else if (operatingSystem == OSPlatform.Linux || operatingSystem == OSPlatform.OSX)
             {
+                // TODO: Get this from config
                 var commonPaths = new[] { "/usr/bin", "/usr/local/bin", "/opt" };
-                foreach (var dir in commonPaths)
-                {
-                    var pythonPath = Path.Combine(dir, "python");
-                    var python3Path = Path.Combine(dir, "python3");
-                    if (File.Exists(pythonPath))
-                    {
-                        result.DetectedPython = true;
-                        result.PathToPython = pythonPath;
-                        return result;
-                    }
-                    if (File.Exists(python3Path))
-                    {
-                        result.DetectedPython = true;
-                        result.PathToPython = python3Path;
-                        return result;
-                    }
-                }
-                return result;
+                return commonPaths.Aggregate(result, (current, dir) => CheckDirectory(dir, current));
             }
             return result;
         }
@@ -182,8 +151,7 @@
             // Check each common directory on the system drives for Python executables
             foreach (var fullPath in systemDrives.SelectMany(_ => commonDirectories, Path.Combine))
             {
-                var pythonExePath = new[] { "python.exe", "python3.exe" }
-                    .Select(exe => Path.Combine(fullPath, exe))
+                var pythonExePath = new[] { "python.exe", "python3.exe" }.Select(exe => Path.Combine(fullPath, exe))
                     .FirstOrDefault(File.Exists);
                 if (pythonExePath != null)
                 {
@@ -193,6 +161,50 @@
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Checks a specified directory for Python executables ("python" or "python3").
+        /// Updates the detection result if an executable is found.
+        /// </summary>
+        /// <param name="directory">The directory to search for Python executables.</param>
+        /// <param name="result">The result model to update with detection details.</param>
+        /// <returns>
+        /// A <see cref="PythonDetectionResultModel" /> indicating if Python was found in the directory
+        /// and providing the path to the executable if detected.
+        /// </returns>
+        private PythonDetectionResultModel CheckDirectory(string directory, PythonDetectionResultModel result)
+        {
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                throw new ArgumentException("Directory path cannot be null or empty.", nameof(directory));
+            }
+            if (!Directory.Exists(directory))
+            {
+                Logger.LogWarning($"Directory does not exist: {directory}");
+                return new PythonDetectionResultModel
+                {
+                    DetectedPython = false
+                };
+            }
+            var pythonPath = Path.Combine(directory, "python");
+            var python3Path = Path.Combine(directory, "python3");
+            if (File.Exists(pythonPath))
+            {
+                result.DetectedPython = true;
+                result.PathToPython = pythonPath;
+                return result;
+            }
+            if (File.Exists(python3Path))
+            {
+                result.DetectedPython = true;
+                result.PathToPython = python3Path;
+                return result;
+            }
+            return new PythonDetectionResultModel
+            {
+                DetectedPython = false
+            };
         }
 
         #endregion
